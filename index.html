@@ -319,8 +319,13 @@
 
   /* === Cart bar === */
   .cart-bar {
-    position: sticky;
+    position: fixed;
     bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 2.5rem);
+    max-width: 810px;
+    z-index: 90;
     background: var(--green);
     color: #fff;
     border-radius: var(--radius-lg);
@@ -328,10 +333,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 4px 20px rgba(45,106,79,.35);
+    box-shadow: 0 4px 20px rgba(45,106,79,.4);
     animation: slideUp .2s ease;
-    margin-bottom: 1rem;
   }
+  /* Padding bottom so products aren't hidden behind the fixed cart bar */
+  .shop-has-cart { padding-bottom: 100px; }
   @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .cart-total { font-family: 'Lora', serif; font-size: 1.2rem; font-weight: 600; }
   .cart-count { font-size: .8rem; opacity: .8; margin-top: 1px; }
@@ -741,9 +747,9 @@ const db = firebase.firestore();
 const ADMIN_PASSWORD = 'orto2026';
 
 /* EMAILJS — crea account su emailjs.com e inserisci i tuoi dati */
-const EMAILJS_PUBLIC_KEY  = 'B6kC7v9zFG3YPj8lw';
-const EMAILJS_SERVICE_ID  = 'service_n3m5q41';
-const EMAILJS_TEMPLATE_ID = 'template_p65gena';
+const EMAILJS_PUBLIC_KEY  = 'QUI_LA_TUA_PUBLIC_KEY';
+const EMAILJS_SERVICE_ID  = 'QUI_IL_SERVICE_ID';
+const EMAILJS_TEMPLATE_ID = 'QUI_IL_TEMPLATE_ID';
 
 /* Soglia consegna gratuita */
 const MIN_FREE_DELIVERY = 20.00;
@@ -880,8 +886,10 @@ let cart     = {};
 let view     = 'list';
 let products = [];
 let orders   = [];
-let filterSearch = '';
-let filterCategory = 'tutti';
+var filterSearch   = '';
+var filterCategory = 'tutti';
+function setFilterCategory(v){ filterCategory = v; renderShop(); }
+function setFilterSearch(v){   filterSearch   = v; renderShop(); }
 const IS_ADMIN_MODE = window.location.search.includes('admin');
 
 function isAuth(){ return sessionStorage.getItem(AUTH_KEY)==='1'; }
@@ -985,17 +993,18 @@ function renderShop(){
   const freeDelivery = subtotal >= MIN_FREE_DELIVERY;
 
   el.innerHTML = `
+    <div class="${count > 0 ? 'shop-has-cart' : ''}">
     <div class="notice"><span class="icon">🌱</span> Disponibilità aggiornata ogni settimana. Ordina entro domenica sera.</div>
 
     <div class="filter-bar">
       <div class="filter-search">
         <span>🔍</span>
         <input type="text" placeholder="Cerca un ortaggio…" value="${filterSearch}"
-          oninput="filterSearch=this.value;renderShop()">
+          oninput="setFilterSearch(this.value)">
       </div>
       <div class="filter-chips">
         ${CATEGORIES.map(c=>`<button class="chip ${filterCategory===c.id?'active':''}"
-          onclick="filterCategory='${c.id}';renderShop()">${c.label}</button>`).join('')}
+          onclick="setFilterCategory('${c.id}')">${c.label}</button>`).join('')}
       </div>
     </div>
 
@@ -1052,19 +1061,18 @@ function renderShop(){
       </div>` : ''}
 
     ${count > 0 ? `
-      <div style="margin-bottom:1rem;">
-        ${!freeDelivery ? `<div class="delivery-progress">
-          Aggiungi <strong>€${remaining.toFixed(2)}</strong> per la consegna gratuita 🚚
-          <div class="progress-track"><div class="progress-fill" style="width:${progressPct}%"></div></div>
-        </div>` : ''}
-        <div class="cart-bar">
-          <div>
-            <div class="cart-total">€${subtotal.toFixed(2)}</div>
-            <div class="cart-count">${count} ${count===1?'prodotto':'prodotti'} · ${freeDelivery?'🚚 Consegna gratuita!':'consegna +€2 (gratuita da €20)'}</div>
-          </div>
-          <button class="btn-cart" onclick="goCheckout()">Procedi →</button>
+      ${!freeDelivery ? `<div class="delivery-progress" style="max-width:810px;margin:0 auto 1rem;">
+        Aggiungi <strong>€${remaining.toFixed(2)}</strong> per la consegna gratuita 🚚
+        <div class="progress-track"><div class="progress-fill" style="width:${progressPct}%"></div></div>
+      </div>` : ''}
+      <div class="cart-bar">
+        <div>
+          <div class="cart-total">€${subtotal.toFixed(2)}</div>
+          <div class="cart-count">${count} ${count===1?'prodotto':'prodotti'} · ${freeDelivery?'🚚 Consegna gratuita!':'consegna +€2 (gratuita da €20)'}</div>
         </div>
-      </div>` : ''}`;
+        <button class="btn-cart" onclick="goCheckout()">Procedi →</button>
+      </div>` : ''}
+    </div>`;
 }
 
 
