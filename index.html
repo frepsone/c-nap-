@@ -10,6 +10,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
   /* === Reset & base === */
@@ -629,6 +630,39 @@
   }
   .auth-form input:focus { outline: none; border-color: var(--green); }
 
+
+  /* === Filters === */
+  .filter-bar { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: .6rem; }
+  .filter-search {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: .55rem .85rem;
+  }
+  .filter-search input { border: none; background: transparent; outline: none; font-family: inherit; font-size: .9rem; color: var(--ink); flex: 1; }
+  .filter-search input::placeholder { color: var(--muted); }
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); font-size: .8rem; cursor: pointer; color: var(--muted); transition: all .12s; white-space: nowrap; }
+  .chip:hover { border-color: var(--green); color: var(--green); }
+  .chip.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .no-results { text-align: center; padding: 2rem; color: var(--muted); font-size: .9rem; }
+  .delivery-progress { background: var(--green-lt); border: 1px solid #95D5B2; border-radius: var(--radius-md); padding: .65rem 1rem; margin-bottom: .75rem; font-size: .82rem; color: var(--green); }
+  .progress-track { height: 6px; background: rgba(45,106,79,.15); border-radius: 20px; margin-top: .4rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 20px; transition: width .3s; }
+  .history-wrap { max-width: 600px; margin: 0 auto; padding: 2rem 0; }
+  .history-search-box { display: flex; gap: .5rem; margin-bottom: 1.5rem; }
+  .history-search-box input { flex: 1; padding: .65rem .85rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--white); font-family: inherit; font-size: .9rem; outline: none; }
+  .history-search-box input:focus { border-color: var(--green); }
+  .history-order-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem 1.1rem; margin-bottom: .75rem; }
+  .history-order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem; }
+  .history-order-id { font-size: .75rem; color: var(--muted); font-family: monospace; }
+  .history-order-total { font-family: 'Lora', serif; font-weight: 600; font-size: 1rem; }
+  .history-order-meta { font-size: .8rem; color: var(--muted); margin-bottom: .4rem; }
+  .history-order-items { font-size: .82rem; color: var(--ink); line-height: 1.6; }
+  .history-status { display: inline-block; font-size: .72rem; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-left: .4rem; }
+  .history-status.nuovo { background: var(--amber-lt); color: var(--amber); }
+  .history-status.confermato { background: var(--green-lt); color: var(--green); }
+  .history-status.consegnato { background: #E8E8E8; color: #555; }
+
   /* === Footer === */
   footer {
     text-align: center;
@@ -657,6 +691,7 @@
 <header>
   <div class="container header-inner">
     <div class="logo"><span>🌿</span> Cà Napà Orticoltura</div>
+    <button onclick="showHistory()" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:.82rem;padding:6px 12px;border-radius:var(--radius-sm);cursor:pointer;">📋 I miei ordini</button>
   </div>
 </header>
 
@@ -704,6 +739,14 @@ const db = firebase.firestore();
 
 /* CAMBIA QUESTA PASSWORD prima di usare il sito! */
 const ADMIN_PASSWORD = 'orto2026';
+
+/* EMAILJS — crea account su emailjs.com e inserisci i tuoi dati */
+const EMAILJS_PUBLIC_KEY  = 'QUI_LA_TUA_PUBLIC_KEY';
+const EMAILJS_SERVICE_ID  = 'QUI_IL_SERVICE_ID';
+const EMAILJS_TEMPLATE_ID = 'QUI_IL_TEMPLATE_ID';
+
+/* Soglia consegna gratuita */
+const MIN_FREE_DELIVERY = 20.00;
 
 /* TELEGRAM — inserisci i tuoi dati */
 const TG_TOKEN   = '8817936267:AAHD6L3qpsgz2bN76mWADWJy-G6gUJfNyD8';   
@@ -834,9 +877,11 @@ const DEFAULT_PRODUCTS = [
 
 const AUTH_KEY = 'ortolano_auth';
 let cart     = {};
-let view     = 'list'; 
+let view     = 'list';
 let products = [];
 let orders   = [];
+let filterSearch = '';
+let filterCategory = 'tutti';
 const IS_ADMIN_MODE = window.location.search.includes('admin');
 
 function isAuth(){ return sessionStorage.getItem(AUTH_KEY)==='1'; }
@@ -881,106 +926,147 @@ db.collection("products").onSnapshot((snapshot) => {
 
 function renderShop(){
   const el = document.getElementById('shop-content');
-  
-  // Schermata di successo
+
   if(view==='success'){
     el.innerHTML = `
       <div class="success-screen">
         <div class="success-icon">🌿</div>
         <h2>Ordine ricevuto!</h2>
-        <p>Grazie! Riceverai presto conferma. Ti contatterò per organizzare la consegna.</p>
-        <button class="btn-primary" style="width:100%;max-width:220px;" onclick="resetShop()">Nuovo ordine</button>
+        <p>Grazie! Ti arriverà una email di conferma a breve. Ti contatterò per organizzare la consegna.</p>
+        <div style="display:flex;flex-direction:column;gap:.75rem;max-width:260px;margin:0 auto;">
+          <button class="btn-primary" onclick="resetShop()">Nuovo ordine</button>
+          <button class="btn-back" onclick="showHistory()">📋 Vedi i miei ordini</button>
+        </div>
       </div>`;
     return;
   }
-  
-  // Schermata checkout
   if(view==='checkout'){ renderCheckout(el); return; }
+  if(view==='history'){  renderHistory(el);  return; }
 
-  // Filtra i prodotti
-  const avail = products.filter(p => p.available && !p.comingSoon);
-  const coming = products.filter(p => p.comingSoon);
-  
-  const inCart = products.filter(p => cart[p.id] > 0);
-  const total  = inCart.reduce((s,p) => s + cart[p.id] * p.price, 0);
-  const count  = Object.values(cart).reduce((a,b) => a + b, 0);
+  const CATEGORIES = [
+    {id:'tutti',     label:'Tutti'},
+    {id:'pomodori',  label:'🍅 Pomodori'},
+    {id:'zucchine',  label:'🥒 Zucchine & Cetrioli'},
+    {id:'patate',    label:'🥔 Patate'},
+    {id:'peperoni',  label:'🫑 Peperoni'},
+    {id:'melanzane', label:'🍆 Melanzane'},
+    {id:'insalate',  label:'🥬 Insalate'},
+    {id:'zucche',    label:'🎃 Zucche'},
+    {id:'aglio',     label:'🧄 Aglio & Cipolla'},
+    {id:'frutta',    label:'🍉 Frutta'},
+  ];
+  function getCat(name){
+    const n = name.toLowerCase();
+    if(n.includes('pomodor')) return 'pomodori';
+    if(n.includes('zucchin')||n.includes('cetriolo')||n.includes('cetrioli')) return 'zucchine';
+    if(n.includes('patata')||n.includes('patate')) return 'patate';
+    if(n.includes('peperone')||n.includes('peperoni')||n.includes('friggitel')) return 'peperoni';
+    if(n.includes('melanzana')||n.includes('melanzane')) return 'melanzane';
+    if(n.includes('insalata')) return 'insalate';
+    if(n.includes('zucca')||n.includes('zucche')) return 'zucche';
+    if(n.includes('aglio')||n.includes('aglione')||n.includes('cipolla')) return 'aglio';
+    if(n.includes('cocomero')||n.includes('anguria')||n.includes('melone')) return 'frutta';
+    return 'altri';
+  }
+
+  const allAvail = products.filter(p => p.available && !p.comingSoon);
+  const coming   = products.filter(p => p.comingSoon);
+  const avail    = allAvail.filter(p => {
+    const matchCat    = filterCategory === 'tutti' || getCat(p.name) === filterCategory;
+    const matchSearch = !filterSearch || p.name.toLowerCase().includes(filterSearch.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const inCart   = products.filter(p => cart[p.id] > 0);
+  const subtotal = inCart.reduce((s,p) => s + cart[p.id]*p.price, 0);
+  const count    = Object.values(cart).reduce((a,b) => a+b, 0);
+  const progressPct  = Math.min(100, (subtotal / MIN_FREE_DELIVERY) * 100);
+  const remaining    = Math.max(0, MIN_FREE_DELIVERY - subtotal);
+  const freeDelivery = subtotal >= MIN_FREE_DELIVERY;
 
   el.innerHTML = `
-    <div class="notice">
-      <span class="icon">🌱</span>
-      Scopri tutto del tuo ortaggio preferito cliccandoci sopra!
+    <div class="notice"><span class="icon">🌱</span> Disponibilità aggiornata ogni settimana. Ordina entro domenica sera.</div>
+
+    <div class="filter-bar">
+      <div class="filter-search">
+        <span>🔍</span>
+        <input type="text" placeholder="Cerca un ortaggio…" value="${filterSearch}"
+          oninput="filterSearch=this.value;renderShop()">
+      </div>
+      <div class="filter-chips">
+        ${CATEGORIES.map(c=>`<button class="chip ${filterCategory===c.id?'active':''}"
+          onclick="filterCategory='${c.id}';renderShop()">${c.label}</button>`).join('')}
+      </div>
     </div>
-    
-    <h2 class="section-title" style="margin-bottom: 1rem; font-size: 1.2rem;">🥦 Disponibili questa settimana</h2>
-    <div class="products-grid" role="list" style="margin-bottom: 2.5rem;">
+
+    ${avail.length === 0
+      ? `<div class="no-results">Nessun prodotto trovato.</div>`
+      : `<div class="products-grid" role="list">
       ${avail.map(p => {
         const max = p.maxQty && p.maxQty > 0 ? p.maxQty : null;
         const stock = (p.stock !== null && p.stock !== undefined) ? p.stock : null;
         const soldOut = stock !== null && stock <= 0;
-        const effectiveMax = [max, stock].filter(v => v !== null).length
-          ? Math.min(...[max, stock].filter(v => v !== null))
-          : null;
+        const caps = [max, stock].filter(v => v !== null);
+        const effectiveMax = caps.length ? Math.min(...caps) : null;
         const current = cart[p.id] || 0;
         const atMax = effectiveMax !== null && current >= effectiveMax;
         return `
-        <div class="product-card ${soldOut ? 'sold-out' : ''}" role="listitem">
+        <div class="product-card ${soldOut?'sold-out':''}" role="listitem">
           <div class="product-photo-wrap" onclick="openProductInfo(${p.id})" style="cursor:pointer;">
-            ${p.img
-              ? `<img src="${p.img}" alt="${p.name}" loading="lazy">`
-              : `<span class="product-emoji-only" aria-hidden="true">${p.emoji}</span>`}
+            ${p.img ? `<img src="${p.img}" alt="${p.name}" loading="lazy">` : `<span class="product-emoji-only">${p.emoji}</span>`}
             ${soldOut ? `<div class="sold-out-badge">Esaurito</div>` : ''}
-            <button class="info-btn info-btn-floating" onclick="event.stopPropagation();openProductInfo(${p.id})" aria-label="Informazioni su ${p.name}">i</button>
+            <button class="info-btn info-btn-floating" onclick="event.stopPropagation();openProductInfo(${p.id})">i</button>
           </div>
           <div class="product-card-body">
             <div class="product-name product-name-clickable" onclick="openProductInfo(${p.id})">${p.name}</div>
             <div class="product-price">€${p.price.toFixed(2)}</div>
             <div class="product-unit">al ${p.unit}</div>
-            <div class="qty-ctrl" role="group" aria-label="Quantità ${p.name}">
-              <button class="qty-btn" onclick="changeQty(${p.id},-1)" aria-label="Diminuisci" ${soldOut ? 'disabled' : ''}>−</button>
-              <span class="qty-num" id="qty-${p.id}" aria-live="polite">${current}</span>
-              <button class="qty-btn" onclick="changeQty(${p.id},1)" aria-label="Aumenta" ${(atMax || soldOut) ? 'disabled' : ''}>+</button>
+            <div class="qty-ctrl">
+              <button class="qty-btn" onclick="changeQty(${p.id},-1)" ${soldOut?'disabled':''}>−</button>
+              <span class="qty-num">${current}</span>
+              <button class="qty-btn" onclick="changeQty(${p.id},1)" ${(atMax||soldOut)?'disabled':''}>+</button>
             </div>
-            ${soldOut
-              ? `<div class="max-qty-note" style="color:#A32D2D;">Esaurito per questa settimana</div>`
-              : stock !== null
-                ? `<div class="max-qty-note">${atMax ? `Solo ${stock} rimasti` : `${stock} disponibili${max !== null ? ` · max ${max} a ordine` : ''}`}</div>`
-                : (max !== null ? `<div class="max-qty-note">${atMax ? `Massimo ${max} raggiunto` : `Max ${max} a ordine`}</div>` : '')}
+            ${soldOut ? `<div class="max-qty-note" style="color:#A32D2D;">Esaurito</div>`
+              : stock !== null ? `<div class="max-qty-note">${stock} disponibili${max?` · max ${max}`:''}</div>`
+              : max ? `<div class="max-qty-note">Max ${max} a ordine</div>` : ''}
           </div>
         </div>`;
       }).join('')}
-    </div>
+    </div>`}
 
     ${coming.length > 0 ? `
-      <h2 class="section-title" style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--muted);">🚀 In arrivo prossimamente</h2>
+      <h2 class="section-title" style="margin:1.5rem 0 1rem;font-size:1.1rem;color:var(--muted);">🚀 In arrivo prossimamente</h2>
       <div class="products-grid" role="list">
-        ${coming.map(p => `
-          <div class="product-card" role="listitem" style="opacity: 0.75; background: #fcfcf9;">
-            <div class="product-photo-wrap" style="filter: grayscale(20%);">
-              ${p.img
-                ? `<img src="${p.img}" alt="${p.name}" loading="lazy">`
-                : `<span class="product-emoji-only" aria-hidden="true">${p.emoji}</span>`}
+        ${coming.map(p=>`
+          <div class="product-card" style="opacity:.75;background:#fcfcf9;">
+            <div class="product-photo-wrap" style="filter:grayscale(20%);">
+              ${p.img ? `<img src="${p.img}" alt="${p.name}" loading="lazy">` : `<span class="product-emoji-only">${p.emoji}</span>`}
             </div>
             <div class="product-card-body">
-              <div class="product-name" style="color: var(--muted);">${p.name}</div>
-              <div class="product-price" style="color: var(--muted);">${formatAvailability(p)}</div>
+              <div class="product-name" style="color:var(--muted)">${p.name}</div>
+              <div class="product-price" style="color:var(--muted)">${formatAvailability(p)}</div>
               <div class="product-unit">al ${p.unit}</div>
-              <div style="margin-top: auto; font-size: 0.75rem; color: #856404; background: #fef3cd; padding: 5px; border-radius: var(--radius-sm); text-align: center; font-weight: 500;">
-                ⏳ Non ancora ordinabile
-              </div>
+              <div style="margin-top:auto;font-size:.75rem;color:#856404;background:#fef3cd;padding:5px;border-radius:var(--radius-sm);text-align:center;font-weight:500;">⏳ Non ancora ordinabile</div>
             </div>
           </div>`).join('')}
-      </div>
-    ` : ''}
+      </div>` : ''}
 
     ${count > 0 ? `
-      <div class="cart-bar" role="complementary" aria-label="Carrello">
-        <div>
-          <div class="cart-total">€${total.toFixed(2)}</div>
-          <div class="cart-count">${count} ${count===1?'prodotto':'prodotti'} selezionati</div>
+      <div style="margin-bottom:1rem;">
+        ${!freeDelivery ? `<div class="delivery-progress">
+          Aggiungi <strong>€${remaining.toFixed(2)}</strong> per la consegna gratuita 🚚
+          <div class="progress-track"><div class="progress-fill" style="width:${progressPct}%"></div></div>
+        </div>` : ''}
+        <div class="cart-bar">
+          <div>
+            <div class="cart-total">€${subtotal.toFixed(2)}</div>
+            <div class="cart-count">${count} ${count===1?'prodotto':'prodotti'} · ${freeDelivery?'🚚 Consegna gratuita!':'consegna +€2 (gratuita da €20)'}</div>
+          </div>
+          <button class="btn-cart" onclick="goCheckout()">Procedi →</button>
         </div>
-        <button class="btn-cart" onclick="goCheckout()">Procedi →</button>
       </div>` : ''}`;
 }
+
 
 const MONTH_NAMES = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const PERIOD_LABELS = { inizio: 'inizio', meta: 'metà', fine: 'fine' };
@@ -1074,7 +1160,8 @@ function renderCheckout(el){
   const inCart = products.filter(p=>cart[p.id]>0);
   const subtotal = inCart.reduce((s,p)=>s+cart[p.id]*p.price, 0);
   const delivery = window._delivery || 'ritiro';
-  const surcharge = delivery === 'consegna' ? 2.00 : 0;
+  const freeDelivery = subtotal >= MIN_FREE_DELIVERY;
+  const surcharge = (delivery === 'consegna' && !freeDelivery) ? 2.00 : 0;
   const total = subtotal + surcharge;
 
   el.innerHTML = `
@@ -1087,8 +1174,8 @@ function renderCheckout(el){
             <span class="order-line-price">€${(cart[p.id]*p.price).toFixed(2)}</span>
           </div>`).join('')}
         ${delivery === 'consegna' ? `
-          <div class="order-line" style="color:var(--muted)">
-            <span>🚚 Contributo consegna</span><span>€2.00</span>
+          <div class="order-line" style="color:${freeDelivery?'var(--green)':'var(--muted)'}">
+            <span>🚚 Consegna</span><span>${freeDelivery?'<strong>Gratuita! 🎉</strong>':'€2.00'}</span>
           </div>` : ''}
         <div class="order-total"><span>Totale</span><span>€${total.toFixed(2)}</span></div>
       </div>
@@ -1104,7 +1191,7 @@ function renderCheckout(el){
           <button class="delivery-opt ${delivery==='consegna'?'selected':''}" onclick="setDelivery('consegna')">
             <div class="opt-icon">🚚</div>
             <div class="opt-label">Consegna a domicilio</div>
-            <div class="opt-sub">+ €2.00</div>
+            <div class="opt-sub">${freeDelivery?'🎉 Gratuita':'+ €2.00 (gratuita da €20)'}</div>
           </button>
         </div>
         ${delivery === 'consegna' ? `
@@ -1162,7 +1249,8 @@ function submitOrder(){
 
   const inCart  = products.filter(p=>cart[p.id]>0);
   const subtotal = inCart.reduce((s,p)=>s+cart[p.id]*p.price, 0);
-  const total   = subtotal + (delivery === 'consegna' ? 2 : 0);
+  const freeDelivery = subtotal >= MIN_FREE_DELIVERY;
+  const total   = subtotal + (delivery === 'consegna' && !freeDelivery ? 2 : 0);
   const address = delivery === 'consegna' ? document.getElementById('f-address').value.trim() : 'Ritiro in loco';
   const now     = new Date();
   
@@ -1210,6 +1298,7 @@ function submitOrder(){
     .then(() => db.collection("orders").doc(order.id).set(order))
     .then(() => {
       sendTelegramNotification(order);
+      sendConfirmationEmail(order);
       cart = {};
       window._delivery = 'ritiro';
       view = 'success';
@@ -1222,6 +1311,87 @@ function resetShop(){
   cart = {};
   view = 'list';
   renderShop();
+}
+
+async function sendConfirmationEmail(order){
+  if(!EMAILJS_PUBLIC_KEY || EMAILJS_PUBLIC_KEY.includes('QUI')) return;
+  try {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+    const righe = order.items.map(i => i.emoji+' '+i.name+' x'+i.qty+' - euro '+(i.qty*i.price).toFixed(2)).join('\n');
+    const consegna = order.delivery === 'consegna'
+      ? 'Consegna a domicilio: '+order.address
+      : 'Ritiro in loco - Via della Canapa 14, Bologna';
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email:       order.email,
+      to_name:        order.name,
+      order_id:       order.id,
+      order_date:     order.date+' alle '+order.time,
+      order_items:    righe,
+      order_delivery: consegna,
+      order_total:    'euro '+order.total.toFixed(2),
+    });
+  } catch(e){ console.warn('Email non inviata:', e); }
+}
+
+function showHistory(){
+  view = 'history';
+  renderShop();
+}
+
+function renderHistory(el){
+  el.innerHTML = `
+    <div class="history-wrap">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+        <button class="btn-back" onclick="view='list';renderShop()">← Torna al negozio</button>
+        <span style="font-family:'Lora',serif;font-size:1.1rem;font-weight:600;">I miei ordini</span>
+      </div>
+      <p style="font-size:.875rem;color:var(--muted);margin-bottom:1rem;">Inserisci la tua email per visualizzare gli ordini effettuati.</p>
+      <div class="history-search-box">
+        <input id="history-email" type="email" placeholder="La tua email (es. mario@email.it)"
+          onkeydown="if(event.key==='Enter')searchOrders()">
+        <button class="btn-primary" style="flex:none;padding:.65rem 1.2rem;" onclick="searchOrders()">Cerca</button>
+      </div>
+      <div id="history-results"></div>
+    </div>`;
+}
+
+function searchOrders(){
+  const email = (document.getElementById('history-email').value||'').trim().toLowerCase();
+  const res   = document.getElementById('history-results');
+  if(!email){
+    res.innerHTML = '<p style="color:var(--muted);font-size:.875rem;">Inserisci un email valida.</p>';
+    return;
+  }
+  res.innerHTML = '<p style="color:var(--muted);font-size:.875rem;">Ricerca in corso...</p>';
+  db.collection("orders").where("email","==",email).get()
+    .then(snap => {
+      if(snap.empty){
+        res.innerHTML = '<p style="text-align:center;padding:1.5rem 0;color:var(--muted);">Nessun ordine trovato per questa email.</p>';
+        return;
+      }
+      const found = [];
+      snap.forEach(doc => found.push(doc.data()));
+      found.sort((a,b) => b.id.localeCompare(a.id));
+      const SL = {nuovo:'In attesa', confermato:'Confermato', consegnato:'Consegnato'};
+      res.innerHTML = found.map(o => {
+        const delLabel = o.delivery==='consegna' ? 'Consegna a domicilio' : 'Ritiro in loco';
+        const itemsStr = o.items.map(i=>i.emoji+' '+i.name+' x'+i.qty).join(' - ');
+        const noteHtml = o.note ? '<div style="font-size:.78rem;color:var(--muted);font-style:italic;margin-top:4px;">Note: '+o.note+'</div>' : '';
+        return '<div class="history-order-card">'
+          +'<div class="history-order-header">'
+          +'<span class="history-order-id">'+o.id+'</span>'
+          +'<span class="history-order-total">€'+o.total.toFixed(2)+'</span>'
+          +'</div>'
+          +'<div class="history-order-meta">'+o.date+' '+o.time+' · '+delLabel
+          +'<span class="history-status '+(o.status||'')+'">'+( SL[o.status]||o.status)+'</span></div>'
+          +'<div class="history-order-items">'+itemsStr+'</div>'
+          +noteHtml
+          +'</div>';
+      }).join('');
+    })
+    .catch(() => {
+      res.innerHTML = '<p style="color:var(--red);font-size:.875rem;">Errore. Riprova.</p>';
+    });
 }
 
 async function sendTelegramNotification(order){
