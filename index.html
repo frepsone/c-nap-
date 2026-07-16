@@ -318,28 +318,123 @@
   .recipe-arrow { font-size: .9rem; }
 
 
-  /* === Cassette section === */
-  .cassette-section { margin-bottom: 2rem; }
-  .cassette-header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
-  .cassette-header h2 { font-family: 'Lora', serif; font-size: 1.2rem; font-weight: 600; color: var(--earth); }
-  .cassette-badge { background: var(--earth-lt); color: var(--earth); font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; letter-spacing: .02em; }
-  .cassette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-  .cassette-card { background: var(--white); border: 2px solid var(--earth-lt); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .15s, border-color .15s; }
-  .cassette-card:hover { box-shadow: 0 6px 24px rgba(124,74,30,.12); border-color: #DCC5B2; }
-  .cassette-photo { position: relative; width: 100%; height: 160px; background: var(--earth-lt); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; cursor: pointer; }
+  /* === Cassette section — Featured full-bleed === */
+  .cassette-section {
+    margin: 0 -1.25rem 0;
+    padding: 2rem 1.25rem 2.25rem;
+    background: linear-gradient(135deg, #F7EDE3 0%, #FDF6F0 60%, #FFF9F5 100%);
+    border-bottom: 1px solid #DCC5B2;
+    margin-bottom: 2rem;
+  }
+  .cassette-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
+  .cassette-header h2 { font-family: 'Lora', serif; font-size: 1.4rem; font-weight: 600; color: var(--earth); }
+  .cassette-badge {
+    background: var(--earth);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .cassette-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .cassette-card {
+    background: var(--white);
+    border: 1.5px solid #DCC5B2;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow .2s, transform .2s, border-color .2s;
+    box-shadow: 0 2px 8px rgba(124,74,30,.06);
+  }
+  .cassette-card:hover {
+    box-shadow: 0 8px 28px rgba(124,74,30,.15);
+    transform: translateY(-3px);
+    border-color: var(--earth);
+  }
+  .cassette-photo {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    background: var(--earth-lt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
   .cassette-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .cassette-photo .cassette-emoji { font-size: 3rem; }
-  .cassette-size-badge { position: absolute; top: 10px; left: 10px; background: var(--earth); color: #fff; font-size: .85rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; letter-spacing: .04em; }
-  .cassette-body { padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; flex: 1; }
-  .cassette-name { font-family: 'Lora', serif; font-size: 1rem; font-weight: 600; margin-bottom: .25rem; cursor: pointer; }
+  .cassette-photo .cassette-emoji { font-size: 3.5rem; }
+  .cassette-size-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: var(--earth);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    letter-spacing: .06em;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+  .cassette-body { padding: 1.1rem 1.1rem 1.2rem; display: flex; flex-direction: column; flex: 1; }
+  .cassette-name {
+    font-family: 'Lora', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: .3rem;
+    cursor: pointer;
+    color: var(--ink);
+  }
   .cassette-name:hover { color: var(--earth); text-decoration: underline; }
-  .cassette-desc { font-size: .8rem; color: var(--muted); margin-bottom: .75rem; line-height: 1.5; }
-  .cassette-price { font-size: 1.25rem; font-family: 'Lora', serif; font-weight: 600; color: var(--earth); margin-bottom: .75rem; }
+  .cassette-desc { font-size: .8rem; color: var(--muted); margin-bottom: .8rem; line-height: 1.55; }
+  .cassette-price {
+    font-size: 1.5rem;
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    color: var(--earth);
+    margin-bottom: .85rem;
+  }
   .cassette-price span { font-size: .78rem; font-weight: 400; color: var(--muted); font-family: 'Inter', sans-serif; }
   .cassette-qty { display: flex; align-items: center; gap: .5rem; margin-top: auto; }
-  .cassette-qty .qty-btn { border-color: var(--earth-lt); }
-  .cassette-qty .qty-btn:hover { background: var(--earth-lt); border-color: #DCC5B2; }
-  .cassette-divider { border: none; border-top: 2px dashed var(--earth-lt); margin: 1.5rem 0 1rem; }
+  .cassette-qty .qty-btn { border-color: #DCC5B2; }
+  .cassette-qty .qty-btn:hover { background: var(--earth-lt); border-color: var(--earth); }
+  .cassette-intro {
+    font-size: .88rem;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+    line-height: 1.55;
+  }
+  .cassette-divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2rem 0 1.5rem;
+  }
+  .section-label {
+    font-family: 'Lora', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  @media (max-width: 520px) {
+    .cassette-grid { grid-template-columns: 1fr; }
+    .cassette-photo { height: 200px; }
+  }
+  @media (min-width: 521px) and (max-width: 700px) {
+    .cassette-grid { grid-template-columns: repeat(2, 1fr); }
+  }
 
   /* === Cart bar === */
   .cart-bar {
@@ -1026,8 +1121,9 @@ function renderShop(){
     <div class="cassette-section">
       <div class="cassette-header">
         <h2>🧺 Le nostre Cassette</h2>
-        <span class="cassette-badge">Selezione della settimana</span>
+        <span class="cassette-badge">In evidenza</span>
       </div>
+      <p class="cassette-intro">Una selezione curata dei migliori ortaggi di stagione, raccolta e confezionata da noi. Perfetta se vuoi fare scorta senza pensarci troppo.</p>
       <div class="cassette-grid">
         ${cassette.map(p => {
           const stock   = (p.stock !== null && p.stock !== undefined) ? p.stock : null;
@@ -1064,6 +1160,8 @@ function renderShop(){
       </div>
       <hr class="cassette-divider">
     </div>` : ''}
+
+    <div class="section-label">🥦 Ortaggi sfusi</div>
 
     <div class="filter-bar">
       <div class="filter-search">
