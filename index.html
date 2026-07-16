@@ -1022,14 +1022,14 @@ function renderShop(){
     <div class="${count > 0 ? 'shop-has-cart' : ''}">
     <div class="notice"><span class="icon">🌱</span> Consegna gratuita! Solo per ordini superiori a 20€</div>
 
-    \${cassette.length > 0 ? `
+    ${cassette.length > 0 ? `
     <div class="cassette-section">
       <div class="cassette-header">
         <h2>🧺 Le nostre Cassette</h2>
         <span class="cassette-badge">Selezione della settimana</span>
       </div>
       <div class="cassette-grid">
-        \${cassette.map(p => {
+        ${cassette.map(p => {
           const stock   = (p.stock !== null && p.stock !== undefined) ? p.stock : null;
           const soldOut = stock !== null && stock <= 0;
           const max     = p.maxQty && p.maxQty > 0 ? p.maxQty : null;
@@ -1037,26 +1037,29 @@ function renderShop(){
           const cap     = caps.length ? Math.min(...caps) : null;
           const current = cart[p.id] || 0;
           const atMax   = cap !== null && current >= cap;
-          return \`
-          <div class="cassette-card \${soldOut?'sold-out':''}">
-            <div class="cassette-photo" onclick="openProductInfo(\${p.id})">
-              \${p.img ? \`<img src="\${p.img}" alt="\${p.name}">\` : '<span class="cassette-emoji">🧺</span>'}
-              \${soldOut ? '<div class="sold-out-badge">Esaurita</div>' : ''}
-              \${p.cassettaSize ? \`<span class="cassette-size-badge">\${p.cassettaSize}</span>\` : ''}
-              <button class="info-btn info-btn-floating" onclick="event.stopPropagation();openProductInfo(\${p.id})">i</button>
-            </div>
-            <div class="cassette-body">
-              <div class="cassette-name" onclick="openProductInfo(\${p.id})">\${p.name}</div>
-              \${p.description ? \`<div class="cassette-desc">\${p.description.substring(0,120)}\${p.description.length>120?'…':''}</div>\` : ''}
-              <div class="cassette-price">€\${p.price.toFixed(2)} <span>/ \${p.unit}</span></div>
-              <div class="cassette-qty">
-                <button class="qty-btn" onclick="changeQty(\${p.id},-1)" \${soldOut?'disabled':''}>−</button>
-                <span class="qty-num">\${current}</span>
-                <button class="qty-btn" onclick="changeQty(\${p.id},1)" \${(atMax||soldOut)?'disabled':''}>+</button>
-                \${stock !== null && !soldOut ? \`<span style="font-size:.72rem;color:var(--muted);margin-left:auto;">\${stock} disponibili</span>\` : ''}
-              </div>
-            </div>
-          </div>\`;
+          const sizeB   = p.cassettaSize ? '<span class="cassette-size-badge">'+p.cassettaSize+'</span>' : '';
+          const imgH    = p.img ? '<img src="'+p.img+'" alt="'+p.name+'">' : '<span class="cassette-emoji">🧺</span>';
+          const descH   = p.description ? '<div class="cassette-desc">'+p.description.substring(0,120)+(p.description.length>120?'…':'')+'</div>' : '';
+          const stockH  = (stock !== null && !soldOut) ? '<span style="font-size:.72rem;color:var(--muted);margin-left:auto;">'+stock+' disponibili</span>' : '';
+          return '<div class="cassette-card '+(soldOut?'sold-out':'')+'">'
+            +'<div class="cassette-photo" onclick="openProductInfo('+p.id+')">'
+            +imgH
+            +(soldOut?'<div class="sold-out-badge">Esaurita</div>':'')
+            +sizeB
+            +'<button class="info-btn info-btn-floating" onclick="event.stopPropagation();openProductInfo('+p.id+')">i</button>'
+            +'</div>'
+            +'<div class="cassette-body">'
+            +'<div class="cassette-name" onclick="openProductInfo('+p.id+')">'+p.name+'</div>'
+            +descH
+            +'<div class="cassette-price">€'+p.price.toFixed(2)+' <span>/ '+p.unit+'</span></div>'
+            +'<div class="cassette-qty">'
+            +'<button class="qty-btn" onclick="changeQty('+p.id+',-1)" '+(soldOut?'disabled':'')+'>−</button>'
+            +'<span class="qty-num">'+current+'</span>'
+            +'<button class="qty-btn" onclick="changeQty('+p.id+',1)" '+((atMax||soldOut)?'disabled':'')+'>+</button>'
+            +stockH
+            +'</div>'
+            +'</div>'
+            +'</div>';
         }).join('')}
       </div>
       <hr class="cassette-divider">
