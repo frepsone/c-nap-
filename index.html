@@ -317,6 +317,30 @@
   .recipe-link:hover { background: #C2EBD2; }
   .recipe-arrow { font-size: .9rem; }
 
+
+  /* === Cassette section === */
+  .cassette-section { margin-bottom: 2rem; }
+  .cassette-header { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+  .cassette-header h2 { font-family: 'Lora', serif; font-size: 1.2rem; font-weight: 600; color: var(--earth); }
+  .cassette-badge { background: var(--earth-lt); color: var(--earth); font-size: .72rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; letter-spacing: .02em; }
+  .cassette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .cassette-card { background: var(--white); border: 2px solid var(--earth-lt); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .15s, border-color .15s; }
+  .cassette-card:hover { box-shadow: 0 6px 24px rgba(124,74,30,.12); border-color: #DCC5B2; }
+  .cassette-photo { position: relative; width: 100%; height: 160px; background: var(--earth-lt); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; cursor: pointer; }
+  .cassette-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cassette-photo .cassette-emoji { font-size: 3rem; }
+  .cassette-size-badge { position: absolute; top: 10px; left: 10px; background: var(--earth); color: #fff; font-size: .85rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; letter-spacing: .04em; }
+  .cassette-body { padding: 1rem 1.1rem 1.1rem; display: flex; flex-direction: column; flex: 1; }
+  .cassette-name { font-family: 'Lora', serif; font-size: 1rem; font-weight: 600; margin-bottom: .25rem; cursor: pointer; }
+  .cassette-name:hover { color: var(--earth); text-decoration: underline; }
+  .cassette-desc { font-size: .8rem; color: var(--muted); margin-bottom: .75rem; line-height: 1.5; }
+  .cassette-price { font-size: 1.25rem; font-family: 'Lora', serif; font-weight: 600; color: var(--earth); margin-bottom: .75rem; }
+  .cassette-price span { font-size: .78rem; font-weight: 400; color: var(--muted); font-family: 'Inter', sans-serif; }
+  .cassette-qty { display: flex; align-items: center; gap: .5rem; margin-top: auto; }
+  .cassette-qty .qty-btn { border-color: var(--earth-lt); }
+  .cassette-qty .qty-btn:hover { background: var(--earth-lt); border-color: #DCC5B2; }
+  .cassette-divider { border: none; border-top: 2px dashed var(--earth-lt); margin: 1.5rem 0 1rem; }
+
   /* === Cart bar === */
   .cart-bar {
     position: fixed;
@@ -977,9 +1001,11 @@ function renderShop(){
     return 'altri';
   }
 
-  const allAvail = products.filter(p => p.available && !p.comingSoon);
-  const coming   = products.filter(p => p.comingSoon);
-  const avail    = allAvail.filter(p => {
+  const allAvail   = products.filter(p => p.available && !p.comingSoon);
+  const coming     = products.filter(p => p.comingSoon);
+  const cassette   = allAvail.filter(p => p.isCassetta);
+  const regulars   = allAvail.filter(p => !p.isCassetta);
+  const avail      = regulars.filter(p => {
     const matchCat    = filterCategory === 'tutti' || getCat(p.name) === filterCategory;
     const matchSearch = !filterSearch || p.name.toLowerCase().includes(filterSearch.toLowerCase());
     return matchCat && matchSearch;
@@ -995,6 +1021,46 @@ function renderShop(){
   el.innerHTML = `
     <div class="${count > 0 ? 'shop-has-cart' : ''}">
     <div class="notice"><span class="icon">🌱</span> Consegna gratuita! Solo per ordini superiori a 20€</div>
+
+    \${cassette.length > 0 ? `
+    <div class="cassette-section">
+      <div class="cassette-header">
+        <h2>🧺 Le nostre Cassette</h2>
+        <span class="cassette-badge">Selezione della settimana</span>
+      </div>
+      <div class="cassette-grid">
+        \${cassette.map(p => {
+          const stock   = (p.stock !== null && p.stock !== undefined) ? p.stock : null;
+          const soldOut = stock !== null && stock <= 0;
+          const max     = p.maxQty && p.maxQty > 0 ? p.maxQty : null;
+          const caps    = [max, stock].filter(v => v !== null);
+          const cap     = caps.length ? Math.min(...caps) : null;
+          const current = cart[p.id] || 0;
+          const atMax   = cap !== null && current >= cap;
+          return \`
+          <div class="cassette-card \${soldOut?'sold-out':''}">
+            <div class="cassette-photo" onclick="openProductInfo(\${p.id})">
+              \${p.img ? \`<img src="\${p.img}" alt="\${p.name}">\` : '<span class="cassette-emoji">🧺</span>'}
+              \${soldOut ? '<div class="sold-out-badge">Esaurita</div>' : ''}
+              \${p.cassettaSize ? \`<span class="cassette-size-badge">\${p.cassettaSize}</span>\` : ''}
+              <button class="info-btn info-btn-floating" onclick="event.stopPropagation();openProductInfo(\${p.id})">i</button>
+            </div>
+            <div class="cassette-body">
+              <div class="cassette-name" onclick="openProductInfo(\${p.id})">\${p.name}</div>
+              \${p.description ? \`<div class="cassette-desc">\${p.description.substring(0,120)}\${p.description.length>120?'…':''}</div>\` : ''}
+              <div class="cassette-price">€\${p.price.toFixed(2)} <span>/ \${p.unit}</span></div>
+              <div class="cassette-qty">
+                <button class="qty-btn" onclick="changeQty(\${p.id},-1)" \${soldOut?'disabled':''}>−</button>
+                <span class="qty-num">\${current}</span>
+                <button class="qty-btn" onclick="changeQty(\${p.id},1)" \${(atMax||soldOut)?'disabled':''}>+</button>
+                \${stock !== null && !soldOut ? \`<span style="font-size:.72rem;color:var(--muted);margin-left:auto;">\${stock} disponibili</span>\` : ''}
+              </div>
+            </div>
+          </div>\`;
+        }).join('')}
+      </div>
+      <hr class="cassette-divider">
+    </div>` : ''}
 
     <div class="filter-bar">
       <div class="filter-search">
@@ -1586,7 +1652,26 @@ function openEditInfo(id){
           <div class="form-row full">
             <div class="form-group">
               <label>URL immagine (foto del prodotto)</label>
-              <input id="edit-img" type="text" value="${p.img ? p.img.replace(/"/g,'&quot;') : ''}" placeholder="es. img/pomodori-ciliegini.jpg">
+              <input id="edit-img" type="text" value="${p.img ? p.img.replace(/\"/g,'&quot;') : ''}" placeholder="es. img/cassetta-s.jpg">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo prodotto</label>
+              <select id="edit-iscassetta">
+                <option value="0" ${!p.isCassetta?'selected':''}>🥦 Ortaggio normale</option>
+                <option value="1" ${p.isCassetta?'selected':''}>🧺 Cassetta (sezione in evidenza)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Taglia cassetta</label>
+              <select id="edit-cassettasize">
+                <option value="" ${!p.cassettaSize?'selected':''}>—</option>
+                <option value="S" ${p.cassettaSize==='S'?'selected':''}>S — Piccola</option>
+                <option value="M" ${p.cassettaSize==='M'?'selected':''}>M — Media</option>
+                <option value="L" ${p.cassettaSize==='L'?'selected':''}>L — Grande</option>
+              </select>
+            </div>
             </div>
           </div>
           <div class="form-row full">
@@ -1628,7 +1713,9 @@ function openEditInfo(id){
 }
 
 function saveProductInfo(id){
-  const img  = document.getElementById('edit-img').value.trim();
+  const img          = document.getElementById('edit-img').value.trim();
+  const isCassetta   = document.getElementById('edit-iscassetta').value === '1';
+  const cassettaSize = document.getElementById('edit-cassettasize').value.trim();
   const desc = document.getElementById('edit-desc').value.trim();
   const maxQtyRaw = document.getElementById('edit-maxqty').value.trim();
   const maxQty = maxQtyRaw === '' ? null : Math.max(1, parseInt(maxQtyRaw, 10) || null);
@@ -1640,6 +1727,8 @@ function saveProductInfo(id){
   const recipe3Url  = document.getElementById('edit-r3url').value.trim();
   db.collection("products").doc(id.toString()).update({
     img: img,
+    isCassetta: isCassetta,
+    cassettaSize: cassettaSize || null,
     maxQty: maxQty,
     description: desc,
     recipe1Name, recipe1Url,
@@ -1657,7 +1746,7 @@ function openAddProduct(){
   const unit = prompt('Unità (es. kg, pezzo):','kg') || 'kg';
   
   const newId = Date.now();
-  db.collection("products").doc(newId.toString()).set({id: newId, name, emoji, price, unit, available: true, comingSoon: false, img: '', maxQty: null, stock: null, availMonth: null, availPeriod: null, description: '', recipe1Name: '', recipe1Url: '', recipe2Name: '', recipe2Url: '', recipe3Name: '', recipe3Url: ''});
+  db.collection("products").doc(newId.toString()).set({id: newId, name, emoji, price, unit, available: true, comingSoon: false, img: '', isCassetta: false, cassettaSize: null, maxQty: null, stock: null, availMonth: null, availPeriod: null, description: '', recipe1Name: '', recipe1Url: '', recipe2Name: '', recipe2Url: '', recipe3Name: '', recipe3Url: ''});
 }
 
 function updateStatus(id, status){ db.collection("orders").doc(id).update({ status: status }); }
